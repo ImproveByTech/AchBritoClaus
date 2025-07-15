@@ -1,13 +1,25 @@
 (function() {
   let queue = window._ptrack = window._ptrack || [];
-  let accountId = "dedault_email";
+  let accountId = "unknown_email";
+  let userId = "unknown_id";
   
   function processQueue() {
     while (queue.length) {
       const [method, ...args] = queue.shift();
       if (method === "setAccount") {
-        accountId = args[0];
-      } 
+        const acc = args[0];
+        if (typeof acc === "string") {
+          userId = acc;
+          email = "unknown_email";
+        } else if (typeof acc === "object" && acc !== null) {
+          userId = acc.id || "unknown_id";
+          email = acc.email || "unknown_email";
+        } else {
+    userId = "unknown_id";
+    email = "unknown_email";
+  }
+}
+
       else if (method === "trackProduct") {
         sendProductData(args[0]);
       }
@@ -22,6 +34,7 @@
     
     const payload = {
       account: accountId,
+      userId: userId,
       timestamp: new Date().toISOString(),
       ...data
     };
