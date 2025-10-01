@@ -6,7 +6,7 @@
   function log(msg, ...args) {
     console.log("[PageTracker]", msg, ...args);
     try {
-      fetch("http://185.202.223.81:5002/js-log", { 
+      fetch("https://achbrito-app-b9d30e46c7a5.herokuapp.com/js-log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -58,7 +58,7 @@
 
     log("Sending product data", payload);
 
-    fetch("http://185.202.223.81:5002/track", { 
+    fetch("https://achbrito-app-b9d30e46c7a5.herokuapp.com/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
