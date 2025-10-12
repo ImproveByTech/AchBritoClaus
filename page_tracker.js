@@ -4,7 +4,7 @@
   let userId = "unknown_id";
   let email = "unknown_email";
 
-  // Utility: safe logging
+  // --- Logging ---
   function log(msg, ...args) {
     console.log("[PageTracker]", msg, ...args);
     try {
@@ -22,7 +22,7 @@
     }
   }
 
-  // Process queue items
+  // --- Process queue items ---
   function processQueue() {
     const failed = [];
     while (queue.length) {
@@ -30,67 +30,75 @@
       log("Processing queue item", method, args);
       try {
         if (method === "setAccount") {
-          const acc = args[0];
-          if (typeof acc === "string") {
-            userId = acc;
-            email = "unknown_email";
-            accountId = acc;
-          } else if (typeof acc === "object" && acc !== null) {
-            userId = acc.id || "unknown_id";
-            email = acc.email || "unknown_email";
-            accountId = email;
-          } else {
-            userId = "unknown_id";
-            email = "unknown_email";
-          }
-          log("Account/user set", { accountId, userId, email });
-
+          handleSetAccount(args[0]);
         } else if (method === "trackProduct") {
-          sendProductData(args[0]);
-
+          sendTrackData("product", args[0]);
+        } else if (method === "trackPageView") {
+          sendTrackData("pageview", args[0]);
+        } else if (method === "trackCart") {
+          sendTrackData("cart", args[0]);
+        } else if (method === "trackLogin") {
+          sendTrackData("login", args[0]);
         } else {
           log("Unknown method", method);
         }
-
       } catch (e) {
         log("Error processing queue item, will retry", method, e);
         failed.push([method, ...args]);
       }
     }
-    if (failed.length) queue.push(...failed);  // retry failed items
+    if (failed.length) queue.push(...failed); // retry failed items
   }
 
-  // Send product data to server
-  function sendProductData(data) {
-    if (!data.id) {
-      log("Product tracking requires at least an ID", data);
-      return;
+  // --- Handle account setup ---
+  function handleSetAccount(acc) {
+    if (typeof acc === "string") {
+      userId = acc;
+      email = "unknown_email";
+      accountId = acc;
+    } else if (typeof acc === "object" && acc !== null) {
+      userId = acc.id || "unknown_id";
+      email = acc.email || "unknown_email";
+      accountId = email;
+    } else {
+      userId = "unknown_id";
+      email = "unknown_email";
     }
+    log("Account/user set", { accountId, userId, email });
+  }
 
+  // --- Generic sender (for all event types) ---
+  function sendTrackData(type, data = {}) {
     const payload = {
+      type,
       account: accountId,
-      userId: userId,
-      email: email,
+      userId,
+      email,
       timestamp: new Date().toISOString(),
       ...data
     };
 
-    log("Sending product data", payload);
+    log(`Sending ${type} data`, payload);
 
     fetch("https://achbrito-app-b9d30e46c7a5.herokuapp.com/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     })
-    .then(res => res.json())
-    .then(res => log("Server response", res))
-    .catch(e => {
-      log("Tracking error, will retry", e);
-      queue.push(["trackProduct", data]);
-    });
+      .then(res => res.json())
+      .then(res => log("Server response", res))
+      .catch(e => {
+        log(`${type} tracking error, will retry`, e);
+        queue.push([`track${capitalize(type)}`, data]);
+      });
   }
 
-  // Override push to auto-process queue
+  // --- Helpers ---
+  function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  // --- Queue override ---
   const originalPush = queue.push.bind(queue);
   queue.push = function(...items) {
     const result = originalPush(...items);
@@ -98,7 +106,7 @@
     return result;
   };
 
-  // Auto-track product from DOM if attributes present
+  // --- Auto-track product from DOM ---
   function initProductTracking() {
     const productEl = document.querySelector("[data-track-product]");
     if (!productEl) return;
@@ -117,6 +125,5 @@
     initProductTracking();
   }
 
-  // Process any existing queue items
   processQueue();
 })();
