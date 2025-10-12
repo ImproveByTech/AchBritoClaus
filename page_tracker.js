@@ -1,6 +1,8 @@
 (function() {
   let queue = window._ptrack = window._ptrack || [];
   let accountId = "default_email";
+  let userId = "unknown_id";
+  let email = "unknown_email";
 
   // Utility: safe logging
   function log(msg, ...args) {
@@ -28,13 +30,28 @@
       log("Processing queue item", method, args);
       try {
         if (method === "setAccount") {
-          accountId = args[0];
-          log("Account set to", accountId);
+          const acc = args[0];
+          if (typeof acc === "string") {
+            userId = acc;
+            email = "unknown_email";
+            accountId = acc;
+          } else if (typeof acc === "object" && acc !== null) {
+            userId = acc.id || "unknown_id";
+            email = acc.email || "unknown_email";
+            accountId = email;
+          } else {
+            userId = "unknown_id";
+            email = "unknown_email";
+          }
+          log("Account/user set", { accountId, userId, email });
+
         } else if (method === "trackProduct") {
           sendProductData(args[0]);
+
         } else {
           log("Unknown method", method);
         }
+
       } catch (e) {
         log("Error processing queue item, will retry", method, e);
         failed.push([method, ...args]);
@@ -52,6 +69,8 @@
 
     const payload = {
       account: accountId,
+      userId: userId,
+      email: email,
       timestamp: new Date().toISOString(),
       ...data
     };
@@ -67,7 +86,6 @@
     .then(res => log("Server response", res))
     .catch(e => {
       log("Tracking error, will retry", e);
-      // Requeue for retry
       queue.push(["trackProduct", data]);
     });
   }
@@ -80,7 +98,7 @@
     return result;
   };
 
-  // Safe DOMContentLoaded handling
+  // Auto-track product from DOM if attributes present
   function initProductTracking() {
     const productEl = document.querySelector("[data-track-product]");
     if (!productEl) return;
@@ -99,6 +117,6 @@
     initProductTracking();
   }
 
-  // Process any queue items that may have been added before script loaded
+  // Process any existing queue items
   processQueue();
 })();
