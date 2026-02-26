@@ -115,16 +115,21 @@
 
   // --- Auto-track product from DOM ---
   function initProductTracking() {
-    const productEl = document.querySelector("[data-track-product]");
-    if (!productEl) return;
-    const data = {
-      id: productEl.dataset.productId,
-      name: productEl.dataset.productName,
-      price: productEl.dataset.productPrice,
-      category: productEl.dataset.productCategory
-    };
-    if (data.id) _ptrack.push(["trackProduct", data]);
-    else log("No product ID found in DOM, skipping auto-track", data);
+    // Atraso de 500ms para dar tempo ao site do cliente de injetar o 'setAccount'
+    setTimeout(() => {
+      const productEl = document.querySelector("[data-track-product]");
+      if (!productEl) return;
+      
+      const data = {
+        id: productEl.dataset.productId,
+        name: productEl.dataset.productName,
+        price: productEl.dataset.productPrice,
+        category: productEl.dataset.productCategory
+      };
+      
+      if (data.id) _ptrack.push(["trackProduct", data]);
+      else log("No product ID found in DOM, skipping auto-track", data);
+    }, 500); 
   }
 
   if (document.readyState === "loading") {
